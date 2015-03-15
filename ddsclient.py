@@ -220,7 +220,7 @@ class DDSClient:
 	def execute(self,to, payload):
 		rval = system(payload)
 		if self.verbose:
-			self.respond(to, "Executed: '%s' \r\n")
+			self.respond(to, "Executed: '%s' \r\n" %payload)
 		self.respond(to, rval)
 	
 ##############
