@@ -138,12 +138,13 @@ class DDSClient:
 	def __str__(self):
 		return self.__repr__
 
-	# Close the client socket and raise Exit
+	# Close the client socket
 	def __del__(self):
 		try:
 			self.client.shutdown(SHUT_RDWR)
 			self.client.close()
 		except Exception:
+		#del exceptions are ignored anyways
 			pass
 
 
